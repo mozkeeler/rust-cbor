@@ -3,7 +3,7 @@ use std::char;
 
 use rustc_serialize::Decoder as RustcDecoder;
 
-use {Cbor, CborUnsigned, CborBytes, Type, CborResult, CborError, ReadError};
+use {Cbor, CborUnsigned, CborBytes, Type, CborResult, CborError, ReadError, CborMapKey};
 
 pub struct CborDecoder {
     stack: Vec<Cbor>,
@@ -193,7 +193,7 @@ impl RustcDecoder for CborDecoder {
         let name = match try!(self.pop_expect("Unicode or variant map")) {
             Cbor::Unicode(name) => name,
             Cbor::Map(mut map) => {
-                let name = match map.remove("variant") {
+                let name = match map.remove(&CborMapKey::TextString(String::from("variant"))) {
                     Some(Cbor::Unicode(name)) => name,
                     Some(v) => return Err(self.errstr(format!(
                         "Expected 'variant' key in variant map to map to a \
@@ -201,7 +201,7 @@ impl RustcDecoder for CborDecoder {
                     None => return Err(self.errstr(format!(
                         "Missing 'variant' key in variant map"))),
                 };
-                match map.remove("fields") {
+                match map.remove(&CborMapKey::TextString(String::from("fields"))) {
                     Some(Cbor::Array(fields)) => {
                         self.stack.extend(fields.into_iter().rev());
                     },
@@ -287,7 +287,7 @@ impl RustcDecoder for CborDecoder {
                 return Err(self.err(ReadError::mismatch(Type::Map, &v)));
             }
         };
-        let val = match map.remove(f_name) {
+        let val = match map.remove(&CborMapKey::TextString(f_name.to_owned())) {
             Some(val) => { self.stack.push(val); try!(f(self)) }
             None => {
                 self.stack.push(Cbor::Null);
@@ -394,7 +394,11 @@ impl RustcDecoder for CborDecoder {
         let len = map.len();
         for (k, v) in map { // order doesn't matter for HashMap
             self.stack.push(v);
-            self.stack.push(Cbor::Unicode(k));
+            self.stack.push(match k {
+                CborMapKey::UnsignedInteger(v) => Cbor::Unsigned(v),
+                CborMapKey::SignedInteger(v) => Cbor::Signed(v),
+                CborMapKey::TextString(v) => Cbor::Unicode(v),
+            });
         }
         f(self, len)
     }

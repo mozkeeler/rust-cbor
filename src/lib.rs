@@ -222,6 +222,27 @@ impl Type {
     }
 }
 
+/// Helper enum for the CBOR types that are permitted as map keys.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum CborMapKey {
+    /// An unsigned integer key type.
+    UnsignedInteger(CborUnsigned),
+    /// A signed integer key type.
+    SignedInteger(CborSigned),
+    /// A Unicode string key type.
+    TextString(String),
+}
+
+impl Encodable for CborMapKey {
+    fn encode<E: RustcEncoder>(&self, e: &mut E) -> Result<(), E::Error>{
+        match *self {
+            CborMapKey::UnsignedInteger(v) => v.encode(e),
+            CborMapKey::SignedInteger(v) => v.encode(e),
+            CborMapKey::TextString(ref v) => v.encode(e),
+        }
+    }
+}
+
 /// CBOR abstract syntax.
 ///
 /// This type can represent any data item described in the CBOR specification
@@ -252,13 +273,13 @@ pub enum Cbor {
     /// An array (major type 4).
     Array(Vec<Cbor>),
     /// A map (major type 5).
-    Map(HashMap<String, Cbor>),
+    Map(HashMap<CborMapKey, Cbor>),
     /// A tag (major type 6).
     Tag(CborTag),
 }
 
 /// An unsigned integer (major type 0).
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, RustcDecodable)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, RustcDecodable, Hash)]
 pub enum CborUnsigned {
     /// Unsigned 8 bit integer.
     UInt8(u8),
@@ -276,7 +297,7 @@ pub enum CborUnsigned {
 /// CBOR `uint8`, it is outside the range of numbers allowed in `i8`.
 /// Therefore, when CBOR data is decoded, `-225` is stored as in `i16` in
 /// memory.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, RustcDecodable)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, RustcDecodable, Hash)]
 pub enum CborSigned {
     /// Negative 8 bit integer.
     Int8(i8),

@@ -9,7 +9,7 @@ use rand::thread_rng;
 use rustc_serialize::{Decodable, Encodable};
 use quickcheck::{QuickCheck, StdGen, Testable};
 
-use cbor::{Encoder, Decoder, Cbor, CborBytes, CborTagEncode};
+use cbor::{Encoder, Decoder, Cbor, CborBytes, CborTagEncode, CborMapKey, CborSigned, CborUnsigned};
 
 fn qc_sized<A: Testable>(f: A, size: u64) {
     QuickCheck::new()
@@ -247,4 +247,40 @@ fn return_error_on_incomplete_read() {
     let buf = encode("hello");
     let mut dec = Decoder::from_bytes(&buf[0..4]);
     assert!(dec.decode::<String>().next().unwrap().is_err());
+}
+
+#[test]
+fn test_decode_non_string_map_key() {
+    let data = vec![0xa1, 0x01, 0x26];
+    let mut decoder = Decoder::from_bytes(data);
+    let map = decoder.items().next().unwrap();
+    assert!(!map.is_err());
+    for item in map {
+        match item {
+            Cbor::Map(map) => {
+                assert_eq!(map.len(), 1);
+                for (k, v) in map {
+                    match k {
+                        CborMapKey::UnsignedInteger(kv) => {
+                            match kv {
+                                CborUnsigned::UInt8(kvv) => assert_eq!(kvv, 1),
+                                _ => assert!(false),
+                            };
+                        },
+                        _ => assert!(false),
+                    };
+                    match v {
+                        Cbor::Signed(vv) => {
+                            match vv {
+                                CborSigned::Int8(vvv) => assert_eq!(vvv, -7),
+                                _ => assert!(false),
+                            };
+                        },
+                        _ => assert!(false),
+                    };
+                };
+            },
+            _ => assert!(false),
+        };
+    };
 }

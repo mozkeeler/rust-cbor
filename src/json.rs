@@ -1,7 +1,7 @@
 use rustc_serialize::base64::{STANDARD, ToBase64};
 use rustc_serialize::json::{Json, ToJson};
 
-use {Cbor, CborFloat, CborSigned, CborUnsigned};
+use {Cbor, CborFloat, CborSigned, CborUnsigned, CborMapKey};
 
 /// A trait for converting values to CBOR.
 pub trait ToCbor {
@@ -25,7 +25,24 @@ impl ToJson for Cbor {
                 v.iter().map(|v| v.to_json()).collect()
             ),
             Cbor::Map(ref v) => Json::Object(
-                v.iter().map(|(k, v)| (k.clone(), v.to_json())).collect()
+                v.iter().map(|(k, v)| {
+                    let key_string = match *k {
+                        CborMapKey::UnsignedInteger(v) => match v {
+                            CborUnsigned::UInt8(v) => v.to_string(),
+                            CborUnsigned::UInt16(v) => v.to_string(),
+                            CborUnsigned::UInt32(v) => v.to_string(),
+                            CborUnsigned::UInt64(v) => v.to_string(),
+                        },
+                        CborMapKey::SignedInteger(v) => match v {
+                            CborSigned::Int8(v) => v.to_string(),
+                            CborSigned::Int16(v) => v.to_string(),
+                            CborSigned::Int32(v) => v.to_string(),
+                            CborSigned::Int64(v) => v.to_string(),
+                        },
+                        CborMapKey::TextString(ref v) => v.clone(),
+                    };
+                    (key_string, v.to_json())
+                }).collect()
             ),
             Cbor::Tag(ref v) => v.data.to_json(),
         }
@@ -47,7 +64,7 @@ impl ToCbor for Json {
                 v.iter().map(|v| v.to_cbor()).collect()
             ),
             Json::Object(ref v) => Cbor::Map(
-                v.iter().map(|(k, v)| (k.clone(), v.to_cbor())).collect()
+                v.iter().map(|(k, v)| (CborMapKey::TextString(k.clone()), v.to_cbor())).collect()
             ),
         }
     }

@@ -10,7 +10,7 @@ use rustc_serialize::Decodable;
 use rustc_decoder::CborDecoder;
 use {
     Cbor, CborUnsigned, CborSigned, CborFloat, CborBytes, CborTag, Type,
-    CborResult, CborError, ReadError,
+    CborResult, CborError, ReadError, CborMapKey,
 };
 
 /// Read CBOR data items into Rust values from the underlying reader `R`.
@@ -176,16 +176,18 @@ impl<R: io::Read> Decoder<R> {
         let at = self.rdr.bytes_read; // for coherent error reporting
         for _ in 0..len {
             let key = match try!(self.read_data_item(None)) {
-                Cbor::Unicode(s) => s,
+                Cbor::Unicode(s) => CborMapKey::TextString(s),
                 Cbor::Bytes(CborBytes(bytes)) => {
                     match String::from_utf8(bytes) {
-                        Ok(s) => s,
+                        Ok(s) => CborMapKey::TextString(s),
                         Err(err) => return Err(CborError::AtOffset {
                             kind: ReadError::Other(err.to_string()),
                             offset: at,
                         }),
                     }
-                }
+                },
+                Cbor::Unsigned(u) => CborMapKey::UnsignedInteger(u),
+                Cbor::Signed(i) => CborMapKey::SignedInteger(i),
                 v => return Err(CborError::AtOffset {
                     kind: ReadError::mismatch(Type::Unicode, &v),
                     offset: at,
