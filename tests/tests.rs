@@ -251,6 +251,8 @@ fn return_error_on_incomplete_read() {
 
 #[test]
 fn test_decode_non_string_map_key() {
+    // This should decode to a map with a single key that is the signed integer -1
+    // mapping to the value of the unsigned integer 7.
     let data = vec![0xa1, 0x01, 0x26];
     let mut decoder = Decoder::from_bytes(data);
     let map = decoder.items().next().unwrap();

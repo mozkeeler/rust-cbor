@@ -222,7 +222,7 @@ impl Type {
     }
 }
 
-/// Helper enum for the CBOR types that are permitted as map keys.
+/// Helper enum for the CBOR types that are currently supported as map keys.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CborMapKey {
     /// An unsigned integer key type.
